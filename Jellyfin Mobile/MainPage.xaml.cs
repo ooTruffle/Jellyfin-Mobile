@@ -59,8 +59,8 @@ namespace JellyfinMobile
                 {
                     Username = username,
                     Password = password,
-                    App = "Jellyfin Mobile",
-                    Device = "Windows 10 Mobile"
+                    App = "Jellyfin WM",
+                    Device = "Windows Mobile"
                 };
                 var json = JsonConvert.SerializeObject(loginInfo);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
