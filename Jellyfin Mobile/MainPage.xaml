@@ -1,0 +1,18 @@
+﻿<Page
+    x:Class="JellyfinMobile.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:JellyfinMobile"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid Padding="40">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="300">
+            <TextBlock Text="Jellyfin Login" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"/>
+            <TextBox x:Name="ServerUrlBox" PlaceholderText="Server URL (e.g. http://192.168.1.2:8096)" Margin="0,16,0,0"/>
+            <TextBox x:Name="UsernameBox" PlaceholderText="Username" Margin="0,8,0,0"/>
+            <PasswordBox x:Name="PasswordBox" PlaceholderText="Password" Margin="0,8,0,0"/>
+            <Button Content="Login" Click="LoginButton_Click" Margin="0,16,0,0"/>
+            <TextBlock x:Name="StatusBlock" Margin="0,8,0,0" Foreground="Red" TextWrapping="Wrap"/>
+        </StackPanel>
+    </Grid>
+</Page>
