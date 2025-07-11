@@ -54,12 +54,18 @@ namespace JellyfinMobile
         {
             using (var client = new HttpClient())
             {
-                // Add User-Agent header
                 client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-
-                var loginInfo = new { Username = username, Password = password };
-                var content = new StringContent(JsonConvert.SerializeObject(loginInfo), Encoding.UTF8, "application/json");
+                var loginInfo = new
+                {
+                    Username = username,
+                    Password = password,
+                    App = "Jellyfin Mobile",
+                    Device = "Windows 10 Mobile"
+                };
+                var json = JsonConvert.SerializeObject(loginInfo);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
                 var url = $"{serverUrl}/Users/AuthenticateByName";
+
                 try
                 {
                     var response = await client.PostAsync(url, content);
@@ -67,18 +73,17 @@ namespace JellyfinMobile
 
                     if (!response.IsSuccessStatusCode)
                     {
-                        // Log full status and body for debugging
-                        return new LoginResult { Success = false, Error = $"Status: {(int)response.StatusCode} {response.StatusCode}\nBody: {result}" };
+                        // Show full request for debugging
+                        return new LoginResult { Success = false, Error = $"Status: {(int)response.StatusCode} {response.StatusCode}\nSent: {json}\nBody: {result}" };
                     }
 
-                    dynamic json = JsonConvert.DeserializeObject(result);
-                    string token = json.AccessToken;
-                    string userId = json.User.Id;
+                    dynamic jsonResp = JsonConvert.DeserializeObject(result);
+                    string token = jsonResp.AccessToken;
+                    string userId = jsonResp.User.Id;
                     return new LoginResult { Success = true, UserId = userId, Token = token };
                 }
                 catch (Exception ex)
                 {
-                    // Log full exception for debugging
                     return new LoginResult { Success = false, Error = $"Exception: {ex.Message}\nStack: {ex.StackTrace}" };
                 }
             }
