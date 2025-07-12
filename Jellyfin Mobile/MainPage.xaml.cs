@@ -180,53 +180,24 @@ namespace JellyfinMobile
         {
             var template = new DataTemplate();
 
-            // Create the template using a factory function
-            template.LoadContent = new Func<object>(() =>
-            {
-                var border = new Border
-                {
-                    Width = 200,
-                    Height = 300,
-                    Margin = new Thickness(10),
-                    BorderBrush = new SolidColorBrush(Windows.UI.Colors.Gray),
-                    BorderThickness = new Thickness(1),
-                    Background = new SolidColorBrush(Windows.UI.Colors.DarkGray)
-                };
+            // Create the template using XAML string
+            var xamlTemplate = @"
+                <DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
+                    <Border Width='300' Height='200' Margin='10' BorderBrush='Gray' BorderThickness='1' Background='DarkGray'>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height='*'/>
+                                <RowDefinition Height='Auto'/>
+                            </Grid.RowDefinitions>
+                            <Image Grid.Row='0' Stretch='UniformToFill' HorizontalAlignment='Center' VerticalAlignment='Center' Source='{Binding ImageUrl}'/>
+                            <Border Grid.Row='1' HorizontalAlignment='Center' VerticalAlignment='Center' Background='#80000000' Padding='8' Margin='5'>
+                                <TextBlock FontSize='16' FontWeight='Bold' TextWrapping='Wrap' HorizontalAlignment='Center' VerticalAlignment='Center' Foreground='White' Text='{Binding Name}'/>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </DataTemplate>";
 
-                var grid = new Grid();
-                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-                var image = new Image
-                {
-                    Stretch = Windows.UI.Xaml.Media.Stretch.UniformToFill,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-                image.SetBinding(Image.SourceProperty, new Windows.UI.Xaml.Data.Binding { Path = new PropertyPath("ImageUrl") });
-                Grid.SetRow(image, 0);
-
-                var textBlock = new TextBlock
-                {
-                    FontSize = 16,
-                    FontWeight = Windows.UI.Text.FontWeights.Bold,
-                    TextWrapping = TextWrapping.Wrap,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Foreground = new SolidColorBrush(Windows.UI.Colors.White),
-                    Background = new SolidColorBrush(Windows.UI.Color.FromArgb(128, 0, 0, 0)),
-                    Padding = new Thickness(8),
-                    Margin = new Thickness(5)
-                };
-                textBlock.SetBinding(TextBlock.TextProperty, new Windows.UI.Xaml.Data.Binding { Path = new PropertyPath("Name") });
-                Grid.SetRow(textBlock, 1);
-
-                grid.Children.Add(image);
-                grid.Children.Add(textBlock);
-                border.Child = grid;
-
-                return border;
-            });
+            template = (DataTemplate)Windows.UI.Xaml.Markup.XamlReader.Load(xamlTemplate);
 
             return template;
         }
