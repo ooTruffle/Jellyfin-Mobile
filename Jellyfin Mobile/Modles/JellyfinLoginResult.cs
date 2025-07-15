@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -15,24 +15,28 @@ namespace JellyfinMobile
         private string _accessToken;
         private string _userId;
         private string _currentLibraryName;
+        // (UI elements...)
 
         public MainPage()
         {
             this.InitializeComponent();
+            CreateUI();
         }
+
+        // (UI creation methods...)
 
         private async void LoginButton_Click(object sender, RoutedEventArgs e)
         {
-            StatusBlock.Text = "";
-            StatusBlock.Foreground = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Red);
+            _statusBlock.Text = "";
+            _statusBlock.Foreground = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Red);
 
-            var serverUrl = ServerUrlBox.Text.TrimEnd('/');
-            var username = UsernameBox.Text;
-            var password = PasswordBox.Password;
+            var serverUrl = _serverUrlBox.Text.TrimEnd('/');
+            var username = _usernameBox.Text;
+            var password = _passwordBox.Password;
 
             if (string.IsNullOrEmpty(serverUrl) || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
-                StatusBlock.Text = "Please enter all fields.";
+                _statusBlock.Text = "Please enter all fields.";
                 return;
             }
 
@@ -41,8 +45,8 @@ namespace JellyfinMobile
                 var loginResult = await _jellyfinService.LoginAsync(serverUrl, username, password);
                 if (loginResult.Success)
                 {
-                    StatusBlock.Foreground = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Green);
-                    StatusBlock.Text = $"Login successful! UserId: {loginResult.UserId}";
+                    _statusBlock.Foreground = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Green);
+                    _statusBlock.Text = $"Login successful! UserId: {loginResult.UserId}";
                     _serverUrl = serverUrl;
                     _accessToken = loginResult.Token;
                     _userId = loginResult.UserId;
@@ -50,12 +54,12 @@ namespace JellyfinMobile
                 }
                 else
                 {
-                    StatusBlock.Text = loginResult.Error ?? "Login failed.";
+                    _statusBlock.Text = loginResult.Error ?? "Login failed.";
                 }
             }
             catch (Exception ex)
             {
-                StatusBlock.Text = $"Error: {ex.Message}";
+                _statusBlock.Text = $"Error: {ex.Message}";
             }
         }
 
@@ -63,16 +67,13 @@ namespace JellyfinMobile
         {
             try
             {
-                // Hide login UI, show media browser UI
-                // You may need to add named panels in your XAML for this!
-                // Example:
-                // LoginPanel.Visibility = Visibility.Collapsed;
-                // MediaBrowserPanel.Visibility = Visibility.Visible;
+                _loginPanel.Visibility = Visibility.Collapsed;
+                _mediaBrowserScrollViewer.Visibility = Visibility.Visible;
                 await LoadLibrariesFromJellyfin();
             }
             catch (Exception ex)
             {
-                StatusBlock.Text = $"Error loading media browser: {ex.Message}";
+                _statusBlock.Text = $"Error loading media browser: {ex.Message}";
             }
         }
 
@@ -80,19 +81,19 @@ namespace JellyfinMobile
         {
             if (string.IsNullOrEmpty(_serverUrl) || string.IsNullOrEmpty(_accessToken) || string.IsNullOrEmpty(_userId))
             {
-                StatusBlock.Text = "Missing authentication information";
+                _statusBlock.Text = "Missing authentication information";
                 return;
             }
 
             try
             {
                 var libraries = await _jellyfinService.GetLibrariesAsync(_serverUrl, _userId, _accessToken);
-                StatusBlock.Text = $"Found {libraries.Count} libraries";
-                // LibraryGridView.ItemsSource = libraries; // Uncomment if you have LibraryGridView in XAML
+                _statusBlock.Text = $"Found {libraries.Count} libraries";
+                _libraryGridView.ItemsSource = libraries;
             }
             catch (Exception ex)
             {
-                StatusBlock.Text = $"Error fetching libraries: {ex.Message}";
+                _statusBlock.Text = $"Error fetching libraries: {ex.Message}";
             }
         }
 
@@ -102,7 +103,7 @@ namespace JellyfinMobile
             if (libraryItem != null)
             {
                 _currentLibraryName = libraryItem.Name;
-                StatusBlock.Text = $"Loading content from: {libraryItem.Name}";
+                _statusBlock.Text = $"Loading content from: {libraryItem.Name}";
                 await LoadLibraryContent(libraryItem.Id);
             }
         }
@@ -111,25 +112,27 @@ namespace JellyfinMobile
         {
             if (string.IsNullOrEmpty(_serverUrl) || string.IsNullOrEmpty(_accessToken) || string.IsNullOrEmpty(_userId))
             {
-                StatusBlock.Text = "Missing authentication information";
+                _statusBlock.Text = "Missing authentication information";
                 return;
             }
 
             try
             {
                 var mediaItems = await _jellyfinService.GetLibraryContentAsync(_serverUrl, _userId, _accessToken, libraryId);
-                StatusBlock.Text = $"Found {mediaItems.Count} items in library";
-                // MediaBrowserTitle.Text = _currentLibraryName; // Uncomment if you have MediaBrowserTitle in XAML
-                // LibraryGridView.Visibility = Visibility.Collapsed;
-                // MediaGridView.Visibility = Visibility.Visible;
-                // BackButton.Visibility = Visibility.Visible;
-                // MediaGridView.ItemsSource = mediaItems;
-                // MediaGridView.ItemTemplate = CreateMediaItemTemplate(); // If you have a template method
+                _statusBlock.Text = $"Found {mediaItems.Count} items in library";
+                _mediaBrowserTitle.Text = _currentLibraryName;
+                _libraryGridView.Visibility = Visibility.Collapsed;
+                _mediaGridView.Visibility = Visibility.Visible;
+                _backButton.Visibility = Visibility.Visible;
+                _mediaGridView.ItemsSource = mediaItems;
+                _mediaGridView.ItemTemplate = CreateMediaItemTemplate();
             }
             catch (Exception ex)
             {
-                StatusBlock.Text = $"Error fetching library content: {ex.Message}";
+                _statusBlock.Text = $"Error fetching library content: {ex.Message}";
             }
         }
+
+        // (Other UI methods and event handlers...)
     }
 }
