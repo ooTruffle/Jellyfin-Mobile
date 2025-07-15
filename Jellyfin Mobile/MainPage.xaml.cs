@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -16,6 +16,7 @@ namespace JellyfinMobile
         private string _serverUrl;
         private string _accessToken;
         private string _userId;
+        private string _currentLibraryName;
 
         // UI element references
         private TextBox _serverUrlBox;
@@ -23,9 +24,12 @@ namespace JellyfinMobile
         private PasswordBox _passwordBox;
         private TextBlock _statusBlock;
         private StackPanel _loginPanel;
+        private ScrollViewer _mediaBrowserScrollViewer;
         private StackPanel _mediaBrowserPanel;
         private GridView _libraryGridView;
         private GridView _mediaGridView;
+        private TextBlock _mediaBrowserTitle;
+        private Button _backButton;
 
         public MainPage()
         {
@@ -45,39 +49,57 @@ namespace JellyfinMobile
             {
                 Name = "LoginPanel",
                 Orientation = Orientation.Vertical,
-                Margin = new Thickness(20),
+                Margin = new Thickness(10), // Reduced margin for mobile
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
 
             // Server URL input
-            var serverUrlLabel = new TextBlock { Text = "Server URL:", Margin = new Thickness(0, 0, 0, 5) };
+            var serverUrlLabel = new TextBlock
+            {
+                Text = "Server URL:",
+                Margin = new Thickness(0, 0, 0, 5),
+                FontSize = 14 // Slightly smaller for mobile
+            };
             var serverUrlBox = new TextBox
             {
                 Name = "ServerUrlBox",
                 PlaceholderText = "https://your-jellyfin-server.com",
                 Margin = new Thickness(0, 0, 0, 10),
-                Width = 300
+                Width = 280, // Reduced width for mobile screens
+                Height = 36  // Increased height for better touch targets
             };
 
             // Username input
-            var usernameLabel = new TextBlock { Text = "Username:", Margin = new Thickness(0, 0, 0, 5) };
+            var usernameLabel = new TextBlock
+            {
+                Text = "Username:",
+                Margin = new Thickness(0, 0, 0, 5),
+                FontSize = 14
+            };
             var usernameBox = new TextBox
             {
                 Name = "UsernameBox",
                 PlaceholderText = "Username",
                 Margin = new Thickness(0, 0, 0, 10),
-                Width = 300
+                Width = 280,
+                Height = 36
             };
 
             // Password input
-            var passwordLabel = new TextBlock { Text = "Password:", Margin = new Thickness(0, 0, 0, 5) };
+            var passwordLabel = new TextBlock
+            {
+                Text = "Password:",
+                Margin = new Thickness(0, 0, 0, 5),
+                FontSize = 14
+            };
             var passwordBox = new PasswordBox
             {
                 Name = "PasswordBox",
                 PlaceholderText = "Password",
                 Margin = new Thickness(0, 0, 0, 10),
-                Width = 300
+                Width = 280,
+                Height = 36
             };
 
             // Login button
@@ -86,7 +108,11 @@ namespace JellyfinMobile
                 Name = "LoginButton",
                 Content = "Login",
                 Margin = new Thickness(0, 0, 0, 10),
-                Width = 300
+                Width = 280,
+                Height = 44,
+                FontSize = 16,
+                Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 70, 130, 180)),
+                Foreground = new SolidColorBrush(Windows.UI.Colors.White)
             };
             loginButton.Click += LoginButton_Click;
 
@@ -97,7 +123,9 @@ namespace JellyfinMobile
                 Text = "",
                 Margin = new Thickness(0, 10, 0, 0),
                 TextWrapping = TextWrapping.Wrap,
-                HorizontalAlignment = HorizontalAlignment.Center
+                HorizontalAlignment = HorizontalAlignment.Center,
+                FontSize = 12,
+                MaxWidth = 280
             };
 
             // Add login controls to panel
@@ -110,22 +138,47 @@ namespace JellyfinMobile
             loginPanel.Children.Add(loginButton);
             loginPanel.Children.Add(statusBlock);
 
+            // Create ScrollViewer for media browser panel (for mobile scrolling)
+            var mediaBrowserScrollViewer = new ScrollViewer
+            {
+                Name = "MediaBrowserScrollViewer",
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                ZoomMode = ZoomMode.Disabled,
+                Visibility = Visibility.Collapsed
+            };
+
             // Create media browser panel (initially hidden)
             var mediaBrowserPanel = new StackPanel
             {
                 Name = "MediaBrowserPanel",
                 Orientation = Orientation.Vertical,
-                Margin = new Thickness(20),
+                Margin = new Thickness(10) // Reduced margin for mobile
+            };
+
+            // Back button
+            var backButton = new Button
+            {
+                Name = "BackButton",
+                Content = "← Back",
+                Margin = new Thickness(0, 0, 0, 10),
+                Width = 100,
+                Height = 36,
+                FontSize = 14,
+                Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 70, 130, 180)),
+                Foreground = new SolidColorBrush(Windows.UI.Colors.White),
+                HorizontalAlignment = HorizontalAlignment.Left,
                 Visibility = Visibility.Collapsed
             };
+            backButton.Click += BackButton_Click;
 
             // Media browser title
             var mediaBrowserTitle = new TextBlock
             {
                 Text = "Media Libraries",
-                FontSize = 24,
+                FontSize = 20, // Reduced for mobile
                 FontWeight = Windows.UI.Text.FontWeights.Bold,
-                Margin = new Thickness(0, 0, 0, 20),
+                Margin = new Thickness(0, 0, 0, 15),
                 HorizontalAlignment = HorizontalAlignment.Center
             };
 
@@ -133,9 +186,11 @@ namespace JellyfinMobile
             var libraryGridView = new GridView
             {
                 Name = "LibraryGridView",
-                Margin = new Thickness(0, 0, 0, 20)
+                Margin = new Thickness(0, 0, 0, 15),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                SelectionMode = ListViewSelectionMode.None // Better for mobile
             };
-            libraryGridView.ItemClick += MediaGridView_ItemClick;
+            libraryGridView.ItemClick += LibraryGridView_ItemClick;
             libraryGridView.IsItemClickEnabled = true;
 
             // Create data template for library items programmatically
@@ -146,21 +201,27 @@ namespace JellyfinMobile
             var mediaGridView = new GridView
             {
                 Name = "MediaGridView",
-                Visibility = Visibility.Collapsed
+                Visibility = Visibility.Collapsed,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                SelectionMode = ListViewSelectionMode.None
             };
             mediaGridView.ItemClick += MediaGridView_ItemClick;
             mediaGridView.IsItemClickEnabled = true;
 
             // Add media browser controls to panel
+            mediaBrowserPanel.Children.Add(backButton);
             mediaBrowserPanel.Children.Add(mediaBrowserTitle);
             mediaBrowserPanel.Children.Add(libraryGridView);
             mediaBrowserPanel.Children.Add(mediaGridView);
 
+            // Add panel to scroll viewer
+            mediaBrowserScrollViewer.Content = mediaBrowserPanel;
+
             // Add panels to main grid
             Grid.SetRow(loginPanel, 0);
-            Grid.SetRow(mediaBrowserPanel, 1);
+            Grid.SetRow(mediaBrowserScrollViewer, 1);
             mainGrid.Children.Add(loginPanel);
-            mainGrid.Children.Add(mediaBrowserPanel);
+            mainGrid.Children.Add(mediaBrowserScrollViewer);
 
             // Set main grid as page content
             this.Content = mainGrid;
@@ -171,27 +232,29 @@ namespace JellyfinMobile
             _passwordBox = passwordBox;
             _statusBlock = statusBlock;
             _loginPanel = loginPanel;
+            _mediaBrowserScrollViewer = mediaBrowserScrollViewer;
             _mediaBrowserPanel = mediaBrowserPanel;
             _libraryGridView = libraryGridView;
             _mediaGridView = mediaGridView;
+            _mediaBrowserTitle = mediaBrowserTitle;
+            _backButton = backButton;
         }
 
         private DataTemplate CreateLibraryItemTemplate()
         {
             var template = new DataTemplate();
 
-            // Create the template using XAML string
             var xamlTemplate = @"
                 <DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
-                    <Border Width='300' Height='200' Margin='10' BorderBrush='Gray' BorderThickness='1' Background='DarkGray'>
+                    <Border Width='160' Height='100' Margin='5' BorderBrush='Gray' BorderThickness='1' Background='DarkGray'>
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height='*'/>
                                 <RowDefinition Height='Auto'/>
                             </Grid.RowDefinitions>
                             <Image Grid.Row='0' Stretch='UniformToFill' HorizontalAlignment='Center' VerticalAlignment='Center' Source='{Binding ImageUrl}'/>
-                            <Border Grid.Row='1' HorizontalAlignment='Center' VerticalAlignment='Center' Background='#80000000' Padding='8' Margin='5'>
-                                <TextBlock FontSize='16' FontWeight='Bold' TextWrapping='Wrap' HorizontalAlignment='Center' VerticalAlignment='Center' Foreground='White' Text='{Binding Name}'/>
+                            <Border Grid.Row='1' HorizontalAlignment='Center' VerticalAlignment='Center' Background='#80000000' Padding='4' Margin='2'>
+                                <TextBlock FontSize='12' FontWeight='Bold' TextWrapping='Wrap' HorizontalAlignment='Center' VerticalAlignment='Center' Foreground='White' Text='{Binding Name}' MaxLines='2'/>
                             </Border>
                         </Grid>
                     </Border>
@@ -200,6 +263,40 @@ namespace JellyfinMobile
             template = (DataTemplate)Windows.UI.Xaml.Markup.XamlReader.Load(xamlTemplate);
 
             return template;
+        }
+
+        private DataTemplate CreateMediaItemTemplate()
+        {
+            var template = new DataTemplate();
+
+            var xamlTemplate = @"
+                <DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
+                    <Border Width='120' Height='180' Margin='5' BorderBrush='Gray' BorderThickness='1' Background='DarkGray'>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height='*'/>
+                                <RowDefinition Height='Auto'/>
+                            </Grid.RowDefinitions>
+                            <Image Grid.Row='0' Stretch='UniformToFill' HorizontalAlignment='Center' VerticalAlignment='Center' Source='{Binding ImageUrl}'/>
+                            <Border Grid.Row='1' HorizontalAlignment='Center' VerticalAlignment='Center' Background='#80000000' Padding='4' Margin='2'>
+                                <TextBlock FontSize='10' FontWeight='Bold' TextWrapping='Wrap' HorizontalAlignment='Center' VerticalAlignment='Center' Foreground='White' Text='{Binding Name}' MaxLines='2'/>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </DataTemplate>";
+
+            template = (DataTemplate)Windows.UI.Xaml.Markup.XamlReader.Load(xamlTemplate);
+
+            return template;
+        }
+
+        private void BackButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Navigate back to libraries view
+            _mediaGridView.Visibility = Visibility.Collapsed;
+            _libraryGridView.Visibility = Visibility.Visible;
+            _backButton.Visibility = Visibility.Collapsed;
+            _mediaBrowserTitle.Text = "Media Libraries";
         }
 
         private async void LoginButton_Click(object sender, RoutedEventArgs e)
@@ -294,7 +391,7 @@ namespace JellyfinMobile
                 _loginPanel.Visibility = Visibility.Collapsed;
 
                 // Show media browser UI
-                _mediaBrowserPanel.Visibility = Visibility.Visible;
+                _mediaBrowserScrollViewer.Visibility = Visibility.Visible;
 
                 // Load and display libraries
                 await LoadLibrariesFromJellyfin();
@@ -318,9 +415,9 @@ namespace JellyfinMobile
                 using (var client = new HttpClient())
                 {
                     // Set headers for authenticated API call
-                    client.DefaultRequestHeaders.Add("User-Agent", "JellyfinMobile/1.0");
+                    client.DefaultRequestHeaders.Add("User-Agent", "JellyfinWM/1.0");
                     client.DefaultRequestHeaders.Add("X-Emby-Authorization",
-                        $"MediaBrowser Client=\"JellyfinMobile\", Device=\"Windows10Mobile\", DeviceId=\"unique-device-id\", Version=\"1.0\", Token=\"{_accessToken}\"");
+                        $"MediaBrowser Client=\"JellyfinWM\", Device=\"Windows 10 Mobile\", DeviceId=\"unique-device-id\", Version=\"1.0\", Token=\"{_accessToken}\"");
 
                     // Get user's media libraries
                     var librariesUrl = $"{_serverUrl}/Users/{_userId}/Views";
@@ -341,13 +438,20 @@ namespace JellyfinMobile
                             {
                                 string libraryId = library.Id?.ToString();
                                 string libraryName = library.Name?.ToString();
+                                string libraryType = library.Type?.ToString();
                                 string imageTag = library.ImageTags?.Primary?.ToString();
+
+                                // Skip Live TV libraries
+                                if (libraryType == "livetv" || libraryName?.ToLower().Contains("live tv") == true)
+                                {
+                                    continue;
+                                }
 
                                 var mediaItem = new MediaItem
                                 {
                                     Id = libraryId ?? "unknown",
                                     Name = libraryName ?? "Unknown Library",
-                                    Type = library.Type?.ToString() ?? "Library",
+                                    Type = libraryType ?? "Library",
                                     Overview = library.Overview?.ToString() ?? "",
                                     ImageUrl = GetImageUrl(libraryId, imageTag)
                                 };
@@ -373,6 +477,93 @@ namespace JellyfinMobile
             }
         }
 
+        private async void LibraryGridView_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            var libraryItem = e.ClickedItem as MediaItem;
+            if (libraryItem != null)
+            {
+                _currentLibraryName = libraryItem.Name;
+                _statusBlock.Text = $"Loading content from: {libraryItem.Name}";
+                await LoadLibraryContent(libraryItem.Id);
+            }
+        }
+
+        private async Task LoadLibraryContent(string libraryId)
+        {
+            if (string.IsNullOrEmpty(_serverUrl) || string.IsNullOrEmpty(_accessToken) || string.IsNullOrEmpty(_userId))
+            {
+                _statusBlock.Text = "Missing authentication information";
+                return;
+            }
+
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    // Set headers for authenticated API call
+                    client.DefaultRequestHeaders.Add("User-Agent", "JellyfinWM/1.0");
+                    client.DefaultRequestHeaders.Add("X-Emby-Authorization",
+                        $"MediaBrowser Client=\"JellyfinWM\", Device=\"Windows 10 Mobile\", DeviceId=\"unique-device-id\", Version=\"1.0\", Token=\"{_accessToken}\"");
+
+                    // Get content from the specific library
+                    var libraryContentUrl = $"{_serverUrl}/Users/{_userId}/Items?ParentId={libraryId}&IncludeItemTypes=Movie,Series,Episode,Audio";
+                    var response = await client.GetAsync(libraryContentUrl);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var result = await response.Content.ReadAsStringAsync();
+                        dynamic mediaData = JsonConvert.DeserializeObject(result);
+
+                        var mediaItems = new List<MediaItem>();
+
+                        if (mediaData.Items != null)
+                        {
+                            foreach (var item in mediaData.Items)
+                            {
+                                string itemId = item.Id?.ToString();
+                                string itemName = item.Name?.ToString();
+                                string itemType = item.Type?.ToString();
+                                string imageTag = item.ImageTags?.Primary?.ToString();
+
+                                var mediaItem = new MediaItem
+                                {
+                                    Id = itemId ?? "unknown",
+                                    Name = itemName ?? "Unknown Item",
+                                    Type = itemType ?? "Unknown",
+                                    Overview = item.Overview?.ToString() ?? "",
+                                    ImageUrl = GetMediaImageUrl(itemId, imageTag)
+                                };
+
+                                mediaItems.Add(mediaItem);
+                            }
+                        }
+
+                        _statusBlock.Text = $"Found {mediaItems.Count} items in library";
+
+                        // Update title to show library name
+                        _mediaBrowserTitle.Text = _currentLibraryName;
+
+                        // Hide library view and show media items
+                        _libraryGridView.Visibility = Visibility.Collapsed;
+                        _mediaGridView.Visibility = Visibility.Visible;
+                        _backButton.Visibility = Visibility.Visible;
+
+                        // Populate the GridView with media items using the proper template
+                        _mediaGridView.ItemsSource = mediaItems;
+                        _mediaGridView.ItemTemplate = CreateMediaItemTemplate();
+                    }
+                    else
+                    {
+                        _statusBlock.Text = $"Failed to fetch library content: {response.StatusCode}";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _statusBlock.Text = $"Error fetching library content: {ex.Message}";
+            }
+        }
+
         private async Task LoadMediaIntoUI()
         {
             if (string.IsNullOrEmpty(_serverUrl) || string.IsNullOrEmpty(_accessToken) || string.IsNullOrEmpty(_userId))
@@ -385,9 +576,9 @@ namespace JellyfinMobile
                 using (var client = new HttpClient())
                 {
                     // Set headers for authenticated API call
-                    client.DefaultRequestHeaders.Add("User-Agent", "JellyfinMobile/1.0");
+                    client.DefaultRequestHeaders.Add("User-Agent", "JellyfinWM/1.0");
                     client.DefaultRequestHeaders.Add("X-Emby-Authorization",
-                        $"MediaBrowser Client=\"JellyfinMobile\", Device=\"Windows10Mobile\", DeviceId=\"unique-device-id\", Version=\"1.0\", Token=\"{_accessToken}\"");
+                        $"MediaBrowser Client=\"JellyfinWM\", Device=\"Windows 10M obile\", DeviceId=\"unique-device-id\", Version=\"1.0\", Token=\"{_accessToken}\"");
 
                     // Get user's media libraries
                     var librariesUrl = $"{_serverUrl}/Users/{_userId}/Items?Recursive=true&IncludeItemTypes=Movie,Series,Episode,Audio";
@@ -434,7 +625,17 @@ namespace JellyfinMobile
             if (string.IsNullOrEmpty(imageTag) || string.IsNullOrEmpty(itemId))
                 return null;
 
-            return $"{_serverUrl}/Items/{itemId}/Images/Primary?tag={imageTag}&width=300&height=450";
+            // Use smaller image sizes for mobile to reduce data usage
+            return $"{_serverUrl}/Items/{itemId}/Images/Primary?tag={imageTag}&width=160&height=100";
+        }
+
+        private string GetMediaImageUrl(string itemId, string imageTag)
+        {
+            if (string.IsNullOrEmpty(imageTag) || string.IsNullOrEmpty(itemId))
+                return null;
+
+            // Use poster-sized images for shows/movies (taller aspect ratio)
+            return $"{_serverUrl}/Items/{itemId}/Images/Primary?tag={imageTag}&width=120&height=180";
         }
 
         private void MediaGridView_ItemClick(object sender, ItemClickEventArgs e)
