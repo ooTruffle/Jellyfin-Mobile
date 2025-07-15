@@ -13,11 +13,20 @@ namespace JellyfinMobile.Services
         private static string GetDeviceString()
         {
             string osString = System.Runtime.InteropServices.RuntimeInformation.OSDescription;
-            if (osString.IndexOf("Mobile", StringComparison.OrdinalIgnoreCase) >= 0)
-                return "Windows 10 Mobile";
-            if (osString.IndexOf("Windows 10", StringComparison.OrdinalIgnoreCase) >= 0)
-                return "Windows 10";
-            return osString.Trim();
+            string device;
+            if (osString.Contains("Mobile", StringComparison.OrdinalIgnoreCase))
+            {
+                device = "Windows 10 Mobile";
+            }
+            else if (osString.StartsWith("Windows 10", StringComparison.OrdinalIgnoreCase))
+            {
+                device = osString.Trim();
+            }
+            else
+            {
+                device = osString.Trim();
+            }
+            return device;
         }
 
         public async Task<JellyfinLoginResult> LoginAsync(string serverUrl, string username, string password)
@@ -38,8 +47,12 @@ namespace JellyfinMobile.Services
                 {
                     var response = await client.PostAsync(url, content);
                     var result = await response.Content.ReadAsStringAsync();
+
                     if (!response.IsSuccessStatusCode)
+                    {
                         return new JellyfinLoginResult { Success = false, Error = $"Status: {(int)response.StatusCode} {response.StatusCode}\nSent: {json}\nBody: {result}" };
+                    }
+
                     dynamic jsonResp = JsonConvert.DeserializeObject(result);
                     string token = jsonResp.AccessToken;
                     string userId = jsonResp.User.Id;
@@ -63,31 +76,43 @@ namespace JellyfinMobile.Services
 
                 var librariesUrl = $"{serverUrl}/Users/{userId}/Views";
                 var response = await client.GetAsync(librariesUrl);
+
                 var libraries = new List<MediaItem>();
                 if (response.IsSuccessStatusCode)
                 {
                     var result = await response.Content.ReadAsStringAsync();
                     dynamic libraryData = JsonConvert.DeserializeObject(result);
+
                     if (libraryData.Items != null)
                     {
                         foreach (var library in libraryData.Items)
                         {
-                            libraries.Add(new MediaItem
+                            string libraryId = library.Id?.ToString();
+                            string libraryName = library.Name?.ToString();
+                            string libraryType = library.Type?.ToString();
+                            string imageTag = library.ImageTags?.Primary?.ToString();
+
+                            if (libraryType == "livetv" || libraryName?.ToLower().Contains("live tv") == true)
+                                continue;
+
+                            var mediaItem = new MediaItem
                             {
-                                Id = library.Id?.ToString(),
-                                Name = library.Name?.ToString(),
-                                Type = library.CollectionType?.ToString() ?? library.Type?.ToString(),
+                                Id = libraryId ?? "unknown",
+                                Name = libraryName ?? "Unknown Library",
+                                Type = libraryType ?? "Library",
                                 Overview = library.Overview?.ToString() ?? "",
-                                ImageUrl = GetMediaImageUrl(serverUrl, library.Id?.ToString(), library.ImageTags, null)
-                            });
+                                ImageUrl = GetImageUrl(serverUrl, libraryId, imageTag)
+                            };
+
+                            libraries.Add(mediaItem);
                         }
                     }
                 }
+
                 return libraries;
             }
         }
 
-        // Only return top-level items (Series for TV, Movies for Movie library, etc.)
         public async Task<List<MediaItem>> GetLibraryContentAsync(string serverUrl, string userId, string accessToken, string libraryId)
         {
             using (var client = new HttpClient())
@@ -97,32 +122,38 @@ namespace JellyfinMobile.Services
                 client.DefaultRequestHeaders.Add("X-Emby-Authorization",
                     $"MediaBrowser Client=\"JellyfinWM\", Device=\"{deviceString}\", DeviceId=\"unique-device-id\", Version=\"1.0\", Token=\"{accessToken}\"");
 
-                var url = $"{serverUrl}/Users/{userId}/Items?ParentId={libraryId}&Recursive=false";
-                var response = await client.GetAsync(url);
+                var libraryContentUrl = $"{serverUrl}/Users/{userId}/Items?ParentId={libraryId}&IncludeItemTypes=Movie,Series,Episode,Audio";
+                var response = await client.GetAsync(libraryContentUrl);
+
                 var mediaItems = new List<MediaItem>();
                 if (response.IsSuccessStatusCode)
                 {
                     var result = await response.Content.ReadAsStringAsync();
                     dynamic mediaData = JsonConvert.DeserializeObject(result);
+
                     if (mediaData.Items != null)
                     {
                         foreach (var item in mediaData.Items)
                         {
-                            string type = item.Type?.ToString();
-                            if (type == "Series" || type == "Movie" || type == "MusicAlbum")
+                            string itemId = item.Id?.ToString();
+                            string itemName = item.Name?.ToString();
+                            string itemType = item.Type?.ToString();
+                            string imageTag = item.ImageTags?.Primary?.ToString();
+
+                            var mediaItem = new MediaItem
                             {
-                                mediaItems.Add(new MediaItem
-                                {
-                                    Id = item.Id?.ToString(),
-                                    Name = item.Name?.ToString(),
-                                    Type = type,
-                                    Overview = item.Overview?.ToString() ?? "",
-                                    ImageUrl = GetMediaImageUrl(serverUrl, item.Id?.ToString(), item.ImageTags, item.SeriesId?.ToString())
-                                });
-                            }
+                                Id = itemId ?? "unknown",
+                                Name = itemName ?? "Unknown Item",
+                                Type = itemType ?? "Unknown",
+                                Overview = item.Overview?.ToString() ?? "",
+                                ImageUrl = GetMediaImageUrl(serverUrl, itemId, imageTag)
+                            };
+
+                            mediaItems.Add(mediaItem);
                         }
                     }
                 }
+
                 return mediaItems;
             }
         }
@@ -135,6 +166,7 @@ namespace JellyfinMobile.Services
                 client.DefaultRequestHeaders.Add("User-Agent", "JellyfinWM/1.0");
                 client.DefaultRequestHeaders.Add("X-Emby-Authorization",
                     $"MediaBrowser Client=\"JellyfinWM\", Device=\"{deviceString}\", DeviceId=\"unique-device-id\", Version=\"1.0\", Token=\"{accessToken}\"");
+
                 var url = $"{serverUrl}/Shows/{showId}/Seasons?UserId={userId}";
                 var response = await client.GetAsync(url);
                 var seasons = new List<MediaItem>();
@@ -152,7 +184,7 @@ namespace JellyfinMobile.Services
                                 Name = season.Name?.ToString(),
                                 Type = "Season",
                                 Overview = season.Overview?.ToString() ?? "",
-                                ImageUrl = GetMediaImageUrl(serverUrl, season.Id?.ToString(), season.ImageTags, showId)
+                                ImageUrl = GetMediaImageUrl(serverUrl, season.Id?.ToString(), season.ImageTags?.Primary?.ToString())
                             });
                         }
                     }
@@ -187,7 +219,7 @@ namespace JellyfinMobile.Services
                                 Name = episode.Name?.ToString(),
                                 Type = "Episode",
                                 Overview = episode.Overview?.ToString() ?? "",
-                                ImageUrl = GetMediaImageUrl(serverUrl, episode.Id?.ToString(), episode.ImageTags, episode.SeriesId?.ToString())
+                                ImageUrl = GetMediaImageUrl(serverUrl, episode.Id?.ToString(), episode.ImageTags?.Primary?.ToString())
                             });
                         }
                     }
@@ -196,58 +228,20 @@ namespace JellyfinMobile.Services
             }
         }
 
-        // Returns both the URL and the raw JSON from Jellyfin
-        public async Task<(string Url, string RawJson)> GetPlayableUrlAndRawAsync(string serverUrl, string accessToken, string itemId, string userId)
+        private string GetImageUrl(string serverUrl, string itemId, string imageTag)
         {
-            using (var client = new HttpClient())
-            {
-                client.DefaultRequestHeaders.Add("X-Emby-Token", accessToken);
-                var url = $"{serverUrl}/Items/{itemId}/PlaybackInfo?UserId={userId}&MediaSourceId={itemId}&VideoCodec=h264&AudioCodec=aac&Container=mp4,ts&TranscodingContainer=ts";
-                var response = await client.GetAsync(url);
-                var result = await response.Content.ReadAsStringAsync();
-                dynamic data = JsonConvert.DeserializeObject(result);
-                string playUrl = null;
-                if (data.MediaSources != null && data.MediaSources.Count > 0)
-                {
-                    var ms = data.MediaSources[0];
-                    if (ms.TranscodingUrl != null)
-                        playUrl = $"{serverUrl}{ms.TranscodingUrl}?api_key={accessToken}";
-                    else if (ms.Path != null)
-                        playUrl = $"{serverUrl}{ms.Path}?api_key={accessToken}";
-                }
-                return (playUrl, result);
-            }
+            if (string.IsNullOrEmpty(imageTag) || string.IsNullOrEmpty(itemId))
+                return null;
+
+            return $"{serverUrl}/Items/{itemId}/Images/Primary?tag={imageTag}&width=160&height=100";
         }
 
-        private string GetMediaImageUrl(string serverUrl, string itemId, dynamic imageTags, string seriesId = null)
+        private string GetMediaImageUrl(string serverUrl, string itemId, string imageTag)
         {
-            string tag = null;
-            string type = null;
-            if (imageTags != null && imageTags.Primary != null)
-            {
-                tag = imageTags.Primary.ToString();
-                type = "Primary";
-            }
-            else if (imageTags != null && imageTags.Thumb != null)
-            {
-                tag = imageTags.Thumb.ToString();
-                type = "Thumb";
-            }
-            else if (imageTags != null && imageTags.Backdrop != null)
-            {
-                tag = imageTags.Backdrop.ToString();
-                type = "Backdrop";
-            }
+            if (string.IsNullOrEmpty(imageTag) || string.IsNullOrEmpty(itemId))
+                return null;
 
-            if (!string.IsNullOrEmpty(tag) && !string.IsNullOrEmpty(itemId) && !string.IsNullOrEmpty(type))
-                return $"{serverUrl}/Items/{itemId}/Images/{type}?tag={tag}&width=200&height=300";
-
-            // Fallback to series poster if available
-            if (!string.IsNullOrEmpty(seriesId))
-                return $"{serverUrl}/Items/{seriesId}/Images/Primary?width=200&height=300";
-
-            // Fallback to a generic local asset
-            return "ms-appx:///Assets/placeholder.png";
+            return $"{serverUrl}/Items/{itemId}/Images/Primary?tag={imageTag}&width=120&height=180";
         }
     }
 }

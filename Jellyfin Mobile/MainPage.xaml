@@ -5,14 +5,150 @@
     xmlns:local="using:JellyfinMobile"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-    <Grid Padding="40">
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="300">
-            <TextBlock Text="Jellyfin Login" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"/>
-            <TextBox x:Name="ServerUrlBox" PlaceholderText="Server URL (e.g. http://192.168.1.2:8096)" Margin="0,16,0,0"/>
-            <TextBox x:Name="UsernameBox" PlaceholderText="Username" Margin="0,8,0,0"/>
-            <PasswordBox x:Name="PasswordBox" PlaceholderText="Password" Margin="0,8,0,0"/>
-            <Button Content="Login" Click="LoginButton_Click" Margin="0,16,0,0"/>
-            <TextBlock x:Name="StatusBlock" Margin="0,8,0,0" Foreground="Red" TextWrapping="Wrap"/>
-        </StackPanel>
+    <Grid>
+        <!-- Login Panel -->
+        <Grid x:Name="LoginPanel" Visibility="Visible"
+              HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="400"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                <TextBlock Text="Jellyfin Login" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"/>
+                <TextBox x:Name="ServerUrlBox" PlaceholderText="Server URL (e.g. http://192.168.1.2:8096)" Margin="0,16,0,0"/>
+                <TextBox x:Name="UsernameBox" PlaceholderText="Username" Margin="0,8,0,0"/>
+                <PasswordBox x:Name="PasswordBox" PlaceholderText="Password" Margin="0,8,0,0"/>
+                <Button Content="Login" Click="LoginButton_Click" Margin="0,16,0,0"/>
+                <TextBlock x:Name="StatusBlock" Margin="0,8,0,0" Foreground="Red" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Media Browser Panel -->
+        <Grid x:Name="MediaBrowserPanel" Visibility="Collapsed"
+              HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <TextBlock x:Name="MediaBrowserTitle" Text="Libraries" FontSize="22" FontWeight="Bold" Margin="0,12,0,12" HorizontalAlignment="Left" Grid.Row="0"/>
+            <Button x:Name="BackButton" Content="← Back" Width="100" HorizontalAlignment="Left" Visibility="Collapsed" Grid.Row="1" Margin="0,0,0,12"/>
+            <Grid Grid.Row="2">
+
+                <!-- Library GridView (posters, full width, correct aspect) -->
+                <GridView x:Name="LibraryGridView"
+                          Margin="16"
+                          SelectionMode="None"
+                          IsItemClickEnabled="True"
+                          ItemClick="LibraryGridView_ItemClick"
+                          Visibility="Visible"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch">
+                    <GridView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <ItemsWrapGrid Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </GridView.ItemsPanel>
+                    <GridView.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Width="180" Margin="12,8" HorizontalAlignment="Center">
+                                <Border Width="180" Height="270" Background="Black">
+                                    <Image Source="{Binding ImageUrl}" Width="180" Height="270" Stretch="Uniform"/>
+                                </Border>
+                                <TextBlock Text="{Binding Name}" FontWeight="Bold" Margin="0,5,0,0" TextAlignment="Center" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </GridView.ItemTemplate>
+                </GridView>
+
+                <!-- Media GridView (for library content e.g. shows/movies) -->
+                <GridView x:Name="MediaGridView"
+                          SelectionMode="None"
+                          IsItemClickEnabled="True"
+                          ItemClick="MediaGridView_ItemClick"
+                          Visibility="Collapsed"
+                          Margin="16"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch">
+                    <GridView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <ItemsWrapGrid Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </GridView.ItemsPanel>
+                    <GridView.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Width="180" Margin="12,8" HorizontalAlignment="Center">
+                                <Border Width="180" Height="270" Background="Black">
+                                    <Image Source="{Binding ImageUrl}" Width="180" Height="270" Stretch="Uniform"/>
+                                </Border>
+                                <TextBlock Text="{Binding Name}" FontWeight="Bold" Margin="0,5,0,0" TextAlignment="Center" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </GridView.ItemTemplate>
+                </GridView>
+
+                <!-- Show Details Panel (with seasons and episodes) -->
+                <StackPanel x:Name="MediaDetailsPanel" Visibility="Collapsed" Margin="24,0,0,0" HorizontalAlignment="Stretch" Width="Auto">
+                    <TextBlock x:Name="SelectedMediaTitle" FontSize="20" FontWeight="Bold" Margin="0,0,0,8"/>
+                    <Button x:Name="PlayButton" Content="Play" Click="PlayButton_Click" Visibility="Collapsed" Width="120" Margin="0,0,0,16"/>
+                    <Pivot x:Name="SeasonPivot"
+                           SelectionChanged="SeasonPivot_SelectionChanged"
+                           Visibility="Collapsed"
+                           Margin="0,8,0,8"
+                           HorizontalAlignment="Stretch"
+                           Width="Auto"/>
+                    <TextBlock x:Name="EpisodeListTitle" Text="Episodes" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,8" Visibility="Collapsed"/>
+                    <GridView x:Name="EpisodeGridView"
+                              IsItemClickEnabled="True"
+                              ItemClick="EpisodeGridView_ItemClick"
+                              Visibility="Collapsed"
+                              HorizontalAlignment="Stretch"
+                              Margin="0,0,0,0"
+                              Padding="24"
+                              Width="Auto">
+                        <GridView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <ItemsWrapGrid Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </GridView.ItemsPanel>
+                        <GridView.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Width="240" Margin="8" HorizontalAlignment="Center">
+                                    <Border Width="240" Height="135" Background="Black">
+                                        <Image Source="{Binding ImageUrl}" Width="240" Height="135" Stretch="Uniform"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" Margin="0,5,0,0" TextAlignment="Center" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </GridView.ItemTemplate>
+                    </GridView>
+                    <!-- Episode Detail Panel -->
+                    <StackPanel x:Name="EpisodeDetailPanel" Visibility="Collapsed" Margin="0,16,0,0" Background="#FF222222" Padding="16" HorizontalAlignment="Stretch">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="240" Height="135" Background="Black" Margin="0,0,16,0">
+                                <Image x:Name="EpisodeDetailImage" Width="240" Height="135" Stretch="Uniform"/>
+                            </Border>
+                            <StackPanel Width="Auto" VerticalAlignment="Top">
+                                <TextBlock x:Name="EpisodeDetailTitle" FontWeight="Bold" FontSize="18" Margin="0,0,0,4"/>
+                                <Button x:Name="EpisodePlayButton" Content="Play" Width="100" Margin="0,0,0,8"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <TextBlock x:Name="EpisodeDetailOverview" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Full Screen Player Overlay -->
+                <Grid x:Name="PlayerGrid" Visibility="Collapsed" Background="Black" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.RowSpan="3" >
+                    <MediaElement x:Name="PlayerMediaElement" AreTransportControlsEnabled="True" AutoPlay="True" Stretch="Uniform" />
+                    <Button Content="Close" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="24" Click="ClosePlayer_Click"/>
+                </Grid>
+            </Grid>
+        </Grid>
     </Grid>
 </Page>
