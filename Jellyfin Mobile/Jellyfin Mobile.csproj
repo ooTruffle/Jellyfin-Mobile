@@ -125,10 +125,17 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
+    <Compile Include="MediaPlayerControl.xaml.cs">
+      <DependentUpon>MediaPlayerControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="EpisodePage.xaml.cs">
+      <DependentUpon>EpisodePage.xaml</DependentUpon>
+    </Compile>
     <Compile Include="LoginResult.cs" />
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Modles\EpisodePageParams.cs" />
     <Compile Include="Modles\JellyfinLoginResult.cs" />
     <Compile Include="Modles\MediaItem.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -194,6 +201,14 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Page Include="MediaPlayerControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="EpisodePage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MainPage.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

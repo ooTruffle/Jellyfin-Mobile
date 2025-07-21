@@ -87,7 +87,6 @@ namespace JellyfinMobile.Services
             }
         }
 
-        // Only return top-level items (Series for TV, Movies for Movie library, etc.)
         public async Task<List<MediaItem>> GetLibraryContentAsync(string serverUrl, string userId, string accessToken, string libraryId)
         {
             using (var client = new HttpClient())
@@ -197,23 +196,36 @@ namespace JellyfinMobile.Services
         }
 
         // Returns both the URL and the raw JSON from Jellyfin
+        // THIS IS THE CHANGED METHOD THAT FORCES TRANSCODING TO H.264/MP4
         public async Task<(string Url, string RawJson)> GetPlayableUrlAndRawAsync(string serverUrl, string accessToken, string itemId, string userId)
         {
             using (var client = new HttpClient())
             {
                 client.DefaultRequestHeaders.Add("X-Emby-Token", accessToken);
-                var url = $"{serverUrl}/Items/{itemId}/PlaybackInfo?UserId={userId}&MediaSourceId={itemId}&VideoCodec=h264&AudioCodec=aac&Container=mp4,ts&TranscodingContainer=ts";
+                // Force transcoding to H.264/MP4 and add MaxStreamingBitrate to help force transcoding
+                var url = $"{serverUrl}/Items/{itemId}/PlaybackInfo?UserId={userId}" +
+                    $"&MediaSourceId={itemId}" +
+                    $"&VideoCodec=h264" +
+                    $"&AudioCodec=aac" +
+                    $"&Container=mp4" +
+                    $"&TranscodingContainer=mp4" +
+                    $"&MaxStreamingBitrate=2000000";
+
                 var response = await client.GetAsync(url);
                 var result = await response.Content.ReadAsStringAsync();
                 dynamic data = JsonConvert.DeserializeObject(result);
+
                 string playUrl = null;
                 if (data.MediaSources != null && data.MediaSources.Count > 0)
                 {
                     var ms = data.MediaSources[0];
-                    if (ms.TranscodingUrl != null)
+                    // Only use TranscodingUrl if present and starts with "/"
+                    if (ms.TranscodingUrl != null && ms.TranscodingUrl.ToString().StartsWith("/"))
                         playUrl = $"{serverUrl}{ms.TranscodingUrl}?api_key={accessToken}";
-                    else if (ms.Path != null)
-                        playUrl = $"{serverUrl}{ms.Path}?api_key={accessToken}";
+                    else if (ms.TranscodingUrl != null &&
+                        (ms.TranscodingUrl.ToString().StartsWith("http://") || ms.TranscodingUrl.ToString().StartsWith("https://")))
+                        playUrl = ms.TranscodingUrl.ToString();
+                    // Do NOT use ms.Path if Protocol == "File"
                 }
                 return (playUrl, result);
             }
@@ -248,6 +260,37 @@ namespace JellyfinMobile.Services
 
             // Fallback to a generic local asset
             return "ms-appx:///Assets/placeholder.png";
+        }
+
+        /// <summary>
+        /// Gets the latest episode details from Jellyfin, including Overview.
+        /// </summary>
+        public async Task<MediaItem> GetEpisodeDetailsAsync(string serverUrl, string userId, string accessToken, string episodeId)
+        {
+            using (var client = new HttpClient())
+            {
+                string deviceString = GetDeviceString();
+                client.DefaultRequestHeaders.Add("User-Agent", "JellyfinWM/1.0");
+                client.DefaultRequestHeaders.Add("X-Emby-Authorization",
+                    $"MediaBrowser Client=\"JellyfinWM\", Device=\"{deviceString}\", DeviceId=\"unique-device-id\", Version=\"1.0\", Token=\"{accessToken}\"");
+
+                var url = $"{serverUrl}/Users/{userId}/Items/{episodeId}";
+                var response = await client.GetAsync(url);
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadAsStringAsync();
+                    dynamic item = JsonConvert.DeserializeObject(result);
+                    return new MediaItem
+                    {
+                        Id = item.Id?.ToString(),
+                        Name = item.Name?.ToString(),
+                        Type = "Episode",
+                        Overview = item.Overview?.ToString() ?? "",
+                        ImageUrl = GetMediaImageUrl(serverUrl, item.Id?.ToString(), item.ImageTags, item.SeriesId?.ToString())
+                    };
+                }
+                return null;
+            }
         }
     }
 }

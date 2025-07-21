@@ -6,6 +6,7 @@ using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media.Imaging;
 using JellyfinMobile.Models;
 using JellyfinMobile.Services;
+using JellyfinMobile.Controls;
 
 namespace JellyfinMobile
 {
@@ -21,6 +22,9 @@ namespace JellyfinMobile
         private List<MediaItem> _seasons = new List<MediaItem>();
         private string _lastPlaybackInfoRaw = "";
 
+        // Dialog guard
+        private bool _dialogOpen = false;
+
         public MainPage()
         {
             this.InitializeComponent();
@@ -30,7 +34,14 @@ namespace JellyfinMobile
             PlayButton.Click += PlayButton_Click;
             EpisodeGridView.ItemClick += EpisodeGridView_ItemClick;
             SeasonPivot.SelectionChanged += SeasonPivot_SelectionChanged;
-            PlayerMediaElement.MediaFailed += PlayerMediaElement_MediaFailed;
+            SeasonGridView.ItemClick += SeasonGridView_ItemClick;
+            this.Loaded += OnLoaded;
+        }
+
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            SharedMediaPlayer.MediaClosed += SharedMediaPlayer_MediaClosed;
+            SharedMediaPlayer.MediaFailedEvent += SharedMediaPlayer_MediaFailedEvent;
         }
 
         private async void LoginButton_Click(object sender, RoutedEventArgs e)
@@ -73,6 +84,15 @@ namespace JellyfinMobile
             }
         }
 
+        private void SeasonGridView_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            var seasonItem = e.ClickedItem as MediaItem;
+            if (seasonItem != null)
+            {
+                _ = ShowEpisodesForSeason(seasonItem);
+            }
+        }
+
         private async Task LoadLibrariesFromJellyfin()
         {
             LibraryGridView.Visibility = Visibility.Visible;
@@ -85,7 +105,7 @@ namespace JellyfinMobile
             EpisodeListTitle.Visibility = Visibility.Collapsed;
             PlayButton.Visibility = Visibility.Collapsed;
             EpisodeDetailPanel.Visibility = Visibility.Collapsed;
-            PlayerGrid.Visibility = Visibility.Collapsed;
+            SharedMediaPlayer.Visibility = Visibility.Collapsed;
 
             var libraries = await _jellyfinService.GetLibrariesAsync(_serverUrl, _userId, _accessToken);
             LibraryGridView.ItemsSource = libraries;
@@ -116,7 +136,7 @@ namespace JellyfinMobile
             EpisodeListTitle.Visibility = Visibility.Collapsed;
             PlayButton.Visibility = Visibility.Collapsed;
             EpisodeDetailPanel.Visibility = Visibility.Collapsed;
-            PlayerGrid.Visibility = Visibility.Collapsed;
+            SharedMediaPlayer.Visibility = Visibility.Collapsed;
         }
 
         private async void MediaGridView_ItemClick(object sender, ItemClickEventArgs e)
@@ -133,7 +153,7 @@ namespace JellyfinMobile
                 EpisodeGridView.Visibility = Visibility.Collapsed;
                 EpisodeListTitle.Visibility = Visibility.Collapsed;
                 EpisodeDetailPanel.Visibility = Visibility.Collapsed;
-                PlayerGrid.Visibility = Visibility.Collapsed;
+                SharedMediaPlayer.Visibility = Visibility.Collapsed;
 
                 MediaBrowserTitle.Text = mediaItem.Name;
                 _seasons = await _jellyfinService.GetSeasonsAsync(_serverUrl, _userId, _accessToken, mediaItem.Id);
@@ -165,7 +185,7 @@ namespace JellyfinMobile
                 EpisodeGridView.Visibility = Visibility.Collapsed;
                 EpisodeListTitle.Visibility = Visibility.Collapsed;
                 EpisodeDetailPanel.Visibility = Visibility.Collapsed;
-                PlayerGrid.Visibility = Visibility.Collapsed;
+                SharedMediaPlayer.Visibility = Visibility.Collapsed;
                 MediaBrowserTitle.Text = mediaItem.Name;
             }
         }
@@ -182,35 +202,57 @@ namespace JellyfinMobile
         {
             EpisodeListTitle.Visibility = Visibility.Visible;
             EpisodeDetailPanel.Visibility = Visibility.Collapsed;
-            PlayerGrid.Visibility = Visibility.Collapsed;
+            SharedMediaPlayer.Visibility = Visibility.Collapsed;
             var episodes = await _jellyfinService.GetEpisodesAsync(_serverUrl, _userId, _accessToken, season.Id);
             EpisodeGridView.ItemsSource = episodes;
             EpisodeGridView.Visibility = Visibility.Visible;
         }
 
-        // FULL SCREEN PLAYER LOGIC
-        private async Task PlayMediaAsync(string itemId)
+        public async Task PlayMediaAsync(string itemId)
         {
             var playbackResult = await _jellyfinService.GetPlayableUrlAndRawAsync(_serverUrl, _accessToken, itemId, _userId);
             _lastPlaybackInfoRaw = playbackResult.RawJson;
 
-            if (!string.IsNullOrEmpty(playbackResult.Url))
+            if (!string.IsNullOrEmpty(playbackResult.Url) &&
+                (playbackResult.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                 playbackResult.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
             {
-                PlayerGrid.Visibility = Visibility.Visible;
-                PlayerMediaElement.Source = new Uri(playbackResult.Url);
-                PlayerMediaElement.Play();
+                SharedMediaPlayer.Visibility = Visibility.Visible;
+                SharedMediaPlayer.PlayMedia(new Uri(playbackResult.Url));
             }
             else
             {
-                ShowPlaybackError(_lastPlaybackInfoRaw);
+                await ShowVerbosePlaybackErrorAsync(itemId, _lastPlaybackInfoRaw);
             }
         }
 
-        private void ClosePlayer_Click(object sender, RoutedEventArgs e)
+        private async Task ShowVerbosePlaybackErrorAsync(string itemId, string rawJellyfinInfo)
         {
-            PlayerMediaElement.Stop();
-            PlayerMediaElement.Source = null;
-            PlayerGrid.Visibility = Visibility.Collapsed;
+            if (_dialogOpen) return;
+            _dialogOpen = true;
+
+            string errorDetails = $"This video cannot be played.\n\n" +
+                $"Item ID: {itemId}\n" +
+                $"Jellyfin PlaybackInfo:\n{rawJellyfinInfo}";
+
+            var dialog = new ContentDialog
+            {
+                Title = "Playback Error",
+                Content = errorDetails,
+                CloseButtonText = "Close"
+            };
+            await dialog.ShowAsync();
+            _dialogOpen = false;
+        }
+
+        private async void SharedMediaPlayer_MediaFailedEvent(object sender, ExceptionRoutedEventArgs e)
+        {
+            await ShowVerbosePlaybackErrorAsync(_selectedMedia?.Id, _lastPlaybackInfoRaw);
+        }
+
+        private void SharedMediaPlayer_MediaClosed(object sender, EventArgs e)
+        {
+            SharedMediaPlayer.Visibility = Visibility.Collapsed;
         }
 
         private async void PlayButton_Click(object sender, RoutedEventArgs e)
@@ -219,32 +261,27 @@ namespace JellyfinMobile
                 await PlayMediaAsync(_selectedMedia.Id);
         }
 
-        private async void EpisodePlayButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (EpisodeDetailPanel.Tag is MediaItem episode)
-                await PlayMediaAsync(episode.Id);
-        }
-
         private void EpisodeGridView_ItemClick(object sender, ItemClickEventArgs e)
         {
             var episodeItem = e.ClickedItem as MediaItem;
             if (episodeItem != null)
             {
-                EpisodeDetailPanel.Visibility = Visibility.Visible;
-                EpisodeDetailPanel.Tag = episodeItem;
-                EpisodeDetailTitle.Text = episodeItem.Name;
-                EpisodeDetailOverview.Text = episodeItem.Overview ?? "No overview available.";
-                EpisodeDetailImage.Source = new BitmapImage(new Uri(episodeItem.ImageUrl ?? "ms-appx:///Assets/placeholder.png"));
-                EpisodePlayButton.Click -= EpisodePlayButton_Click;
-                EpisodePlayButton.Click += EpisodePlayButton_Click;
+                var navParams = new EpisodePageParams
+                {
+                    Episode = episodeItem,
+                    ServerUrl = _serverUrl,
+                    UserId = _userId,
+                    AccessToken = _accessToken
+                };
+                Frame.Navigate(typeof(EpisodePage), navParams);
             }
         }
 
         private async void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            if (PlayerGrid.Visibility == Visibility.Visible)
+            if (SharedMediaPlayer.Visibility == Visibility.Visible)
             {
-                ClosePlayer_Click(sender, e);
+                SharedMediaPlayer.ClosePlayer();
                 return;
             }
             if (MediaDetailsPanel.Visibility == Visibility.Visible)
@@ -258,25 +295,6 @@ namespace JellyfinMobile
             {
                 await LoadLibrariesFromJellyfin();
             }
-        }
-
-        private void PlayerMediaElement_MediaFailed(object sender, ExceptionRoutedEventArgs e)
-        {
-            ShowPlaybackError(_lastPlaybackInfoRaw);
-        }
-
-        private void ShowPlaybackError(string jellyfinRaw)
-        {
-            PlayerGrid.Visibility = Visibility.Visible;
-            // Show error overlay (or use a TextBlock overlaying the player)
-            // For simplicity, use a MessageDialog (or you can overlay a TextBlock in XAML over the player)
-            var dialog = new ContentDialog()
-            {
-                Title = "Playback Error",
-                Content = $"Unsupported video type or invalid file path.\n\nJellyfin PlaybackInfo:\n{jellyfinRaw}",
-                CloseButtonText = "Close"
-            };
-            _ = dialog.ShowAsync();
         }
     }
 }
