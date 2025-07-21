@@ -5,6 +5,7 @@ using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
 using JellyfinMobile.Models;
 using JellyfinMobile.Services;
+using System.Threading.Tasks;
 using JellyfinMobile.Controls; // Import your control's namespace
 
 namespace JellyfinMobile
