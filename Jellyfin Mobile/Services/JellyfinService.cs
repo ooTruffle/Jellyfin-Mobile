@@ -4,6 +4,8 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using JellyfinMobile.Models;
+
 
 namespace JellyfinMobile.Services
 {
@@ -43,7 +45,17 @@ namespace JellyfinMobile.Services
                 }
             }
         }
+        public async Task<MediaItem> GetEpisodeDetailsAsync(string serverUrl, string userId, string accessToken, string episodeId)
+        {
+            // TODO: Implement this method to fetch episode details from the Jellyfin API
+            return new MediaItem(); // Placeholder
+        }
 
+        public async Task<(string Url, string RawJson)> GetPlayableUrlAndRawAsync(string serverUrl, string accessToken, string episodeId, string userId)
+        {
+            // TODO: Implement this method to fetch the playback URL and raw JSON from the Jellyfin API
+            return (null, null); // Placeholder
+        }
         public async Task<List<MediaItem>> GetLibrariesAsync(string serverUrl, string userId, string accessToken)
         {
             using (var client = new HttpClient())
