@@ -1,6 +1,6 @@
-﻿using Windows.UI.Xaml;
+﻿using System;
+using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using System;
 
 namespace JellyfinMobile.Controls
 {
@@ -15,19 +15,25 @@ namespace JellyfinMobile.Controls
         public event EventHandler MediaClosed;
         public event EventHandler<ExceptionRoutedEventArgs> MediaFailedEvent;
 
+        /// <summary>
+        /// Play media from a given URI.
+        /// </summary>
         public void PlayMedia(Uri mediaUri)
         {
+            if (mediaUri == null) throw new ArgumentNullException(nameof(mediaUri));
             PlayerMediaElement.Source = mediaUri;
             PlayerMediaElement.Play();
             this.Visibility = Visibility.Visible;
         }
 
+        /// <summary>
+        /// Stop playback and close player.
+        /// </summary>
         public void ClosePlayer()
         {
             PlayerMediaElement.Stop();
             PlayerMediaElement.Source = null;
             this.Visibility = Visibility.Collapsed;
-
             MediaClosed?.Invoke(this, EventArgs.Empty);
         }
 

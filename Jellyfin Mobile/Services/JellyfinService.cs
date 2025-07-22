@@ -45,12 +45,13 @@ namespace JellyfinMobile.Services
                 }
             }
         }
+#pragma warning disable CS1998
         public async Task<MediaItem> GetEpisodeDetailsAsync(string serverUrl, string userId, string accessToken, string episodeId)
         {
-            // TODO: Implement this method to fetch episode details from the Jellyfin API
-            return new MediaItem(); // Placeholder
+            // TODO: Implement
+            return new MediaItem();
         }
-
+#pragma warning restore CS1998  
         public async Task<(string Url, string RawJson)> GetPlayableUrlAndRawAsync(string serverUrl, string accessToken, string episodeId, string userId)
         {
             // TODO: Implement this method to fetch the playback URL and raw JSON from the Jellyfin API

@@ -1,19 +1,18 @@
-﻿using System;
-using System.Threading.Tasks;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
+﻿using Windows.UI.Xaml.Controls;
+using System;
 using Windows.UI.Xaml.Navigation;
 using Windows.UI.Xaml.Media.Imaging;
 using JellyfinMobile.Models;
+using System.Collections.Generic;
 
 namespace JellyfinMobile
 {
-    public sealed partial class EpisodePage : Page
+    public sealed partial class MoviePage : Page
     {
-        private MediaItem _episode;
+        private MediaItem _movie;
         private LibraryPageNavigationArgs _navArgs;
 
-        public EpisodePage()
+        public MoviePage()
         {
             this.InitializeComponent();
         }
@@ -22,16 +21,17 @@ namespace JellyfinMobile
         {
             base.OnNavigatedTo(e);
             var args = e.Parameter as MediaPageNavigationArgs;
-            _episode = args.Item;
+            _movie = args.Item;
             _navArgs = args.Args;
-            PosterImage.Source = new BitmapImage(new Uri(_episode.ImageUrl));
-            EpisodeTitle.Text = _episode.Name;
-            EpisodeOverview.Text = _episode.Overview;
+            PosterImage.Source = new BitmapImage(new Uri(_movie.ImageUrl));
+            MovieTitle.Text = _movie.Name;
+            MovieOverview.Text = _movie.Overview;
         }
 
         private void PlayButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
         {
-            Frame.Navigate(typeof(PlayerPage), new MediaPageNavigationArgs { Item = _episode, Args = _navArgs });
+            // Play logic: show a player page/control, e.g.
+            Frame.Navigate(typeof(PlayerPage), new MediaPageNavigationArgs { Item = _movie, Args = _navArgs });
         }
     }
 }

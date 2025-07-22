@@ -1,13 +1,13 @@
 ﻿<Page
-    x:Class="JellyfinMobile.EpisodePage"
+    x:Class="JellyfinMobile.MoviePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Background="Black">
     <ScrollViewer>
         <StackPanel Margin="20">
-            <Image x:Name="PosterImage" Height="180" Margin="0,0,0,20"/>
-            <TextBlock x:Name="EpisodeTitle" FontSize="24" Foreground="White"/>
-            <TextBlock x:Name="EpisodeOverview" FontSize="15" Foreground="White" Margin="0,10,0,10" TextWrapping="Wrap"/>
+            <Image x:Name="PosterImage" Height="220" Margin="0,0,0,20"/>
+            <TextBlock x:Name="MovieTitle" FontSize="28" Foreground="White"/>
+            <TextBlock x:Name="MovieOverview" FontSize="16" Foreground="White" Margin="0,10,0,10" TextWrapping="Wrap"/>
             <Button Content="Play" Width="120" Click="PlayButton_Click"/>
         </StackPanel>
     </ScrollViewer>
